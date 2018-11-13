@@ -5,14 +5,14 @@
 # See documentation in:
 # https://doc.scrapy.org/en/latest/topics/items.html
 
-from scrapy.item import Item,Field
+from scrapy.item import Item, Field
 
 
 class SpiderItem(Item):
     url = Field()
     title = Field()
-    clientCompany = Field()
-    clientPrice = Field()
-    clientDesc = Field()
-    clientPhone = Field()
-
+    time = Field()
+    company = Field()
+    price = Field()
+    phone = Field()
+    desc = Field()

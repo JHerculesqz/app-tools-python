@@ -23,8 +23,8 @@ class Spider1(CrawlSpider):
 
     def __init__(self):
         self.seleniumUtils = SeleniumUtils()
-        self.seleniumUtils.loginManual('https://www.tianyancha.com/')
-        self.start_urls = ScrapyUtils.init("http://www.hbggzy.cn/jydt/003001/003001005/%s.html", 2)
+        self.seleniumUtils.loginManual('https://www.qichacha.com/', 30)
+        self.start_urls = ScrapyUtils.init("http://www.hbggzy.cn/jydt/003001/003001005/%s.html", 20)
 
     # endregion
 
@@ -32,11 +32,21 @@ class Spider1(CrawlSpider):
 
     def parse(self, oResponse):
         oSelector = ScrapyUtils.getSelector(oResponse)
-        arrDomArticle = ScrapyUtils.xpath('//ul[@class="ewb-news-items"]/li', oSelector)
+        arrDomArticle = ScrapyUtils.findByXPath('//ul[@class="ewb-news-items"]/li', oSelector)
         for oDomArticle in arrDomArticle:
             oItem = SpiderItem()
-            oItem['url'] = 'http://www.hbggzy.cn' + ScrapyUtils.xpath2('a/@href', oDomArticle, False)
-            oItem['title'] = ScrapyUtils.xpath2('a/@title', oDomArticle, True)
+            # url
+            oDomUrl = ScrapyUtils.findByXPath2('a/@href', oDomArticle)
+            oItem['url'] = 'http://www.hbggzy.cn' + ScrapyUtils.extract(oDomUrl, False)
+            # title
+            oDomTitle = ScrapyUtils.findByXPath2('a/@title', oDomArticle)
+            oItem['title'] = ScrapyUtils.extract(oDomTitle, True)
+            # time
+            oDomTime = ScrapyUtils.findByXPath2('span/text()', oDomArticle)
+            strTime = ScrapyUtils.extract(oDomTime, True)
+            strTime = StrUtils.replace(strTime, '\r\n', '')
+            strTime = StrUtils.replace(strTime, '\t', '')
+            oItem["time"] = strTime
 
             oRequest = ScrapyUtils.postWithItem(oItem['url'], oItem, self._parseRecursive)
             yield oRequest
@@ -44,48 +54,35 @@ class Spider1(CrawlSpider):
     def _parseRecursive(self, oResponse):
         oSelector = Selector(oResponse)
         oItem = oResponse.meta['item']
-        oDomClientCompany = ScrapyUtils.xpath('//div[@class="news-article-para"]/table/tr[9]/td[2]/div/text()',
+
+        # company
+        oDomCompany = ScrapyUtils.findByXPath('//div[@class="news-article-para"]/table/tr[9]/td[2]/div/text()',
                                               oSelector)
-        oItem["clientCompany"] = ScrapyUtils.extract(oDomClientCompany, True)
-        oDomClientPrice = ScrapyUtils.xpath('//div[@class="news-article-para"]/table/tr[9]/td[3]/div/text()', oSelector)
-        oItem["clientPrice"] = ScrapyUtils.extract(oDomClientPrice, True)
-        oDomClientDesc = ScrapyUtils.xpath('//div[@class="news-article-para"]/table/tr[9]/td[4]/div/text()', oSelector)
-        oItem["clientDesc"] = ScrapyUtils.extract(oDomClientDesc, True)
-        oItem["clientPhone"] = self._parsePhone(oItem["clientCompany"])
+        oItem["company"] = ScrapyUtils.extract(oDomCompany, True)
+        # price
+        oDomPrice = ScrapyUtils.findByXPath('//div[@class="news-article-para"]/table/tr[9]/td[3]/div/text()',
+                                            oSelector)
+        oItem["price"] = ScrapyUtils.extract(oDomPrice, True)
+        # desc
+        oDomDesc = ScrapyUtils.findByXPath('//div[@class="news-article-para"]/table/tr[9]/td[4]/div/text()',
+                                           oSelector)
+        oItem["desc"] = ScrapyUtils.extract(oDomDesc, True)
+        oItem["phone"] = self._parsePhone(oItem["company"])
         yield oItem
 
     def _parsePhone(self, strQuery):
-        try:
-            # get strPreText
-            self.seleniumUtils.get('https://www.tianyancha.com/search/suggest.json?key=' + strQuery)
-            strPreText = self.seleniumUtils.getEleByTag("pre").text
-
-            # get oJson
-            oJson = JsonUtils.get(strPreText)
-
-            # get strId
-            strId = ""
-            for oJsonItem in oJson:
-                strCompanyName = oJsonItem.get("name").replace("<em>", "").replace("</em>", "")
-                if strCompanyName == strQuery:
-                    strId = oJsonItem.get("id")
-                    break
-            # if strId is empty
-            if strId == "":
-                strPhone = strId
-            # if strId is not empty
-            else:
-                strPhone = self._parsePhoneDetails(strQuery, strId)
-            return strPhone
-        except Exception as e:
-            print(str(e))
-            return ""
-
-    def _parsePhoneDetails(self, strQuery, strId):
-        self.seleniumUtils.get('https://www.tianyancha.com/company/' + str(strId))
-        strPhone = self.seleniumUtils.getEleByXPath("./*//div[@class='detail ']/*//div[@class='in-block']/span[2]").text
-        strRes = "{0},{1}\n".format(strQuery, strPhone)
-        return strRes
+        # oDomCompany
+        time.sleep(10)
+        self.seleniumUtils.get('https://www.qichacha.com/search?key=' + strQuery)
+        oDomCompany = self.seleniumUtils.getEleByClass('ma_h1')
+        strCompanyUrl = oDomCompany.get_attribute('href')
+        # oDomPhone
+        time.sleep(10)
+        self.seleniumUtils.get(strCompanyUrl)
+        oDomPhone = self.seleniumUtils.getEleByClass('cvlu')
+        oDomPhoneA = oDomPhone.find_element_by_tag_name('span')
+        strPhone = oDomPhoneA.text
+        return strPhone
 
     # endregion
 
@@ -95,12 +92,11 @@ class SeleniumUtils:
     def __init__(self):
         self.driver = webdriver.Chrome()
 
-    def loginManual(self, strUrl):
-        print("启动浏览器，打开天眼查登录界面")
+    def loginManual(self, strUrl, iTimeout):
+        print('login,wait...')
         self.driver.get(strUrl)
-        print("手动登录，等待60s......")
-        time.sleep(60)
-        print("登录成功")
+        time.sleep(iTimeout)
+        print("login ok...")
         self.driver.get(strUrl)
 
     def get(self, strUrl):
@@ -114,6 +110,10 @@ class SeleniumUtils:
         oEle = self.driver.find_element_by_xpath(strXPath)
         return oEle
 
+    def getEleByClass(self, strClassName):
+        oEle = self.driver.find_element_by_class_name(strClassName);
+        return oEle
+
 
 # TODO:移到core-fw-python
 class JsonUtils:
@@ -124,6 +124,16 @@ class JsonUtils:
     def get(strUrl):
         oJson = json.loads(strUrl).get("data")
         return oJson
+
+
+# TODO:移到core-fw-python
+class StrUtils:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def replace(strTarget, strOld, strNew):
+        return strTarget.replace(strOld, strNew)
 
 
 # TODO:移到core-fw-python
@@ -150,15 +160,12 @@ class ScrapyUtils:
         return oSelector
 
     @staticmethod
-    def xpath(strXPath, oSelector):
+    def findByXPath(strXPath, oSelector):
         return oSelector.xpath(strXPath)
 
     @staticmethod
-    def xpath2(strXPath, oDom, bEncode):
-        if bEncode:
-            return oDom.xpath(strXPath).extract()[0].encode('utf-8')
-        else:
-            return oDom.xpath(strXPath).extract()[0]
+    def findByXPath2(strXPath, oDom):
+        return oDom.xpath(strXPath)
 
     @staticmethod
     def extract(oDom, bEncode):
