@@ -24,7 +24,7 @@ class Spider1(CrawlSpider):
     def __init__(self):
         self.seleniumUtils = SeleniumUtils()
         self.seleniumUtils.loginManual('https://www.qichacha.com/', 30)
-        self.start_urls = ScrapyUtils.init("http://www.hbggzy.cn/jydt/003001/003001005/%s.html", 20)
+        self.start_urls = ScrapyUtils.init("http://www.hbggzy.cn/jydt/003001/003001005/%s.html", 3)
 
     # endregion
 

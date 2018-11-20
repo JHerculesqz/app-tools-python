@@ -8,8 +8,7 @@ from openpyxl.styles import Border, Side, Alignment, Font
 
 class ClientspiderPipeline(object):
     def __init__(self):
-        FileUtilsEx.copyFile('template.xlsx', 'result.xlsx')
-        self.workbook = XlsUtils.open('result.xlsx')
+        self.workbook = XlsUtils.open('template.xlsx')
         self.sheet = XlsUtils.getSheet('Sheet', self.workbook)
         self.border = XlsUtils.getStyleBorder()
         self.align = XlsUtils.getStyleAlign()
@@ -40,7 +39,7 @@ class ClientspiderPipeline(object):
         oCell7 = XlsUtils.getCell(iRowIndex, 7, self.sheet)
         XlsUtils.setCell4Text(item['phone'], self.border, self.align, self.font, oCell7)
         # save
-        XlsUtils.save('result.xlsx', self.workbook)
+        XlsUtils.save('result' + spider.name + '.xlsx', self.workbook)
         return item
 
 

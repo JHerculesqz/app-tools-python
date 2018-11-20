@@ -1,3 +1,4 @@
 clientSpider/.idea/
 *.pyc
 clientSpider/result.xlsx
+*.xlsx
